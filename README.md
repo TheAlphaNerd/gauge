@@ -18,53 +18,59 @@ gauge.hide()
 ![](example.png)
 
 
-### `var gauge = new Gauge([options], [ansiStream])`
+### CHANGES FROM 1.x
 
-* **options** – *(optional)* An option object. (See [below] for details.)
-* **ansiStream** – *(optional)* A stream that's been blessed by the [ansi]
-  module to include various commands for controlling the cursor in a terminal.
+Gauge 2.x is breaking release, please see the [changelog] for details on
+what's changed if you were previously a user of this module.
 
-[ansi]: https://www.npmjs.com/package/ansi
-[below]: #theme-objects
+### `var gauge = new Gauge(stream, [options])`
+
+* **stream** – A stream that progress bar updates are to be written to. Gauge honors
+  backpressure and will pause most writing if it is indicated.
+* **options** – *(optional)* An option object.
 
 Constructs a new gauge. Gauges are drawn on a single line, and are not drawn
 if the current terminal isn't a tty.
 
-If you resize your terminal in a way that can be detected then the gauge
-will be drawn at the new size. As a general rule, growing your terminal will
-be clean, but shrinking your terminal will result in cruft as we don't have
-enough information to know where what we wrote previously is now located.
+If **stream** is a terminal or if you pass in **tty** to **options** then we
+will detect terminal resizes and redraw to fit.  We do this by watching for
+`resize` events on the tty.  (To work around a bug in verisons of Node prior
+to 2.5.0, we watch for them on stdout if the tty is stderr.) Resizes to
+larger window sizes will be clean, but shrinking the window will always
+result in some cruft.
 
 The **options** object can have the following properties, all of which are
 optional:
 
-* maxUpdateFrequency: defaults to 50 msec, the gauge will not be drawn more
-  than once in this period of time. This applies to `show` and `pulse`
-  calls, but if you `hide` and then `show` the gauge it will draw it
-  regardless of time since last draw.
-* theme: defaults to Gauge.unicode` if the terminal supports
-  unicode according to [has-unicode], otherwise it defaults to `Gauge.ascii`.
-  Details on the [theme object](#theme-objects) are documented elsewhere.
-* template: see [documentation elsewhere](#template-objects) for
-  defaults and details.
+* **updateInterval**: How often gauge updates should be drawn.
+* **theme**: The theme to use as output.  Defaults to something usable on
+  your combination of OS, color and unicode support. In practice this means
+  that Windows always gets ASCII by default, Mac almost always gets unicode,
+  and everyone almost always gets color. Unicode is detected with [has-unicode]
+  and color is detected with [has-color]. Theme selection is done by the
+  internal [themes] module, which you can use directly.
+* **template**: Describes what you want your gauge to look like. The default
+  is what npm uses. Detailed [documentation] is later in this document.
+* **hideCursor**: Defaults to true.  If true, then the cursor will be hidden
+  while the gauge is displayed.
+* **tty**: The tty that you're ultimately writing to. Defaults to the same
+  as **stream**. This is used for detecting resizes.
+* **enabled**: Defaults to true. If true the gauge starts enabled. If disabled then
+  all update commands are ignored and no gauge will be printed until you call `.enable()`.
+* **Gauge**: The class to use to actually generate the gauge for printing. This defaults
+  to `require('gauge/gauge')` and ordinarly you shouldn't need to override this.
 
 [has-unicode]: https://www.npmjs.com/package/has-unicode
+[has-color]: https://www.npmjs.com/package/has-color
+[themes]: #themes
+[documentation]: #templates
 
-If **ansiStream** isn't passed in, then one will be constructed from stderr
-with `ansi(process.stderr)`.
+### `gauge.show([section, [completed]])`
 
-### `gauge.show([name, [completed]])`
+* **section** – *(optional)* The name of the current thing contributing to
+  progress.  Defaults to the last value used, or "".
 
-* **name** – *(optional)* The name of the current thing contributing to progress. Defaults to the last value used, or "".
 * **completed** – *(optional)* The portion completed as a value between 0 and 1. Defaults to the last value used, or 0.
-
-If `process.stdout.isTTY` is false then this does nothing. If completed is 0
-and `gauge.pulse` has never been called, then similarly nothing will be printed.
-
-If `maxUpdateFrequency` msec haven't passed since the last call to `show` or
-`pulse` then similarly, nothing will be printed.  (Actually, the update is
-deferred until `maxUpdateFrequency` msec have passed and if nothing else has
-happened, the gauge update will happen.)
 
 ### `gauge.hide()`
 
@@ -136,8 +142,7 @@ be be included verbatum in the output.
 If the template element is an object, it can have the following keys:
 
 * *type* can be:
-  * `name` – The most recent name passed to `show`; if this is in response to a
-    `pulse` then the name passed to `pulse` will be appended along with the
+  * `section` – What big thing you're working on now.
     subsection property from the theme.
   * `spinner` – If you've ever called `pulse` this will be one of the characters
     from the spinner property of the theme.

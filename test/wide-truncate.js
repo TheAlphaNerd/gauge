@@ -1,0 +1,47 @@
+'use strict'
+var test = require('tap').test
+var wideTruncate = require('../wide-truncate.js')
+
+test('wideTruncate', function (t) {
+  var result = wideTruncate('abc', 6)
+
+  t.is(result, 'abc', 'narrow, no truncation')
+  var result = wideTruncate('古古古', 6)
+  t.is(result, '古古古', 'wide, no truncation')
+  var result = wideTruncate('abc', 2)
+  t.is(result, 'ab', 'narrow, truncation')
+  var result = wideTruncate('古古古', 2)
+  t.is(result, '古', 'wide, truncation')
+  var result = wideTruncate('古古', 3)
+  t.is(result, '古', 'wide, truncation, partial')
+  var result = wideTruncate('古', 1)
+  t.is(result, '', 'wide, truncation, no chars fit')
+  var result = wideTruncate('abc', 0)
+  t.is(result, '', 'zero truncation is empty')
+  var result = wideTruncate('', 10)
+  t.is(result, '', 'empty string')
+
+  var result = wideTruncate('abc古古古def', 12)
+  t.is(result, 'abc古古古def', 'mixed nwn, no truncation')
+  var result = wideTruncate('abcdef古古古', 12)
+  t.is(result, 'abcdef古古古', 'mixed nw, no truncation')
+  var result = wideTruncate('古古古abcdef', 12)
+  t.is(result, '古古古abcdef', 'mixed wn, no truncation')
+  var result = wideTruncate('古古abcdef古', 12)
+  t.is(result, '古古abcdef古', 'mixed wnw, no truncation')
+
+  var result = wideTruncate('abc古古古def', 6)
+  t.is(result, 'abc古', 'mixed nwn, truncation')
+  var result = wideTruncate('abcdef古古古', 6)
+  t.is(result, 'abcdef', 'mixed nw, truncation')
+  var result = wideTruncate('古古古abcdef', 6)
+  t.is(result, '古古古', 'mixed wn, truncation')
+  var result = wideTruncate('古古abcdef古', 6)
+  t.is(result, '古古ab', 'mixed wnw, truncation')
+  var result = wideTruncate('abc\x1b[0mdef', 6)
+  t.is(result, 'abc\x1b[0mdef', 'ansi codes are zero width')
+  var result = wideTruncate('abc\x1b[0mdef', 4)
+  t.is(result, 'abc\x1b[0md', 'ansi codes are zero width, clip text')
+
+  t.end()
+})
